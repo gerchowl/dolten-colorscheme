@@ -235,7 +235,7 @@ Colors that differ only on the red-green axis (the missing M-cone dimension) bec
 | Luminance separation | Every color has a distinct luminance value (verified via WCAG contrast matrix). No two foreground colors have <1.3:1 luminance ratio. |
 | Blue-yellow axis | Primary accent is blue (`#7aa2f7`). Yellow (`#c4c40c`) is punchy. Magenta is purple (`#a050d0`), not pink. |
 | Shifted red/green | Red is `#d85050` (shifted slightly orange from pure red). Green is `#5b914e` (shifted toward grass). Under deuteranopia simulation, they diverge on the yellow axis. |
-| Comfort range | 5:1–10:1 contrast on background. Not WCAG AAA's harsh 7:1 minimum with pure white. |
+| Comfort range | Most colors 5:1–10:1 on background. Three normal colors (cyan, magenta, red) sit at 3.3–4.3:1 for hue accuracy — their bright variants cover AA. |
 | Matched TUI theme | WezTerm ANSI palette + lazygit hex theme designed and validated together. |
 
 ### What Dalton Dark does differently
@@ -243,7 +243,7 @@ Colors that differ only on the red-green axis (the missing M-cone dimension) bec
 1. **Designed by a deuteranope.** Not simulated — actually tested by someone who can't distinguish standard red from green.
 2. **TUI-first.** Built for lazygit, not retrofitted from an editor theme. Borders, selections, and status lines are first-class citizens.
 3. **Iteratively tuned.** Not calculated from formulas and shipped — each color was adjusted in real terminal sessions with contrast matrix validation at each step.
-4. **Comfort over compliance.** WCAG AA (4.5:1) rather than AAA (7:1). The extra contrast of AAA with saturated colors causes visual fatigue over long sessions.
+4. **Comfort over compliance.** Targets readability over strict WCAG AA everywhere. Three normal colors prioritize hue accuracy over 4.5:1 — their bright variants pass AA. Not AAA's harsh 7:1 minimum with pure white.
 
 ## References
 

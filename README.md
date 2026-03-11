@@ -19,7 +19,7 @@ Red-green color vision deficiency affects ~8% of men and ~0.5% of women worldwid
 - **No red-green reliance.** Every color pair is distinguishable under deuteranopia simulation.
 - **Blue-yellow axis primary.** Uses the intact color axis for maximum differentiation.
 - **Even luminance spread.** Each color has a distinct luminance value — no two foreground colors cluster.
-- **WCAG AA validated.** All foreground colors pass 4.5:1 minimum contrast on background. Most exceed 5:1.
+- **WCAG AA for bright variants.** All bright colors and most normals exceed 4.5:1 on background. Three normal colors (cyan 3.3:1, magenta 3.7:1, red 4.3:1) trade strict AA compliance for hue accuracy — their bright variants cover AA.
 - **Matched pair.** WezTerm ANSI palette and lazygit hex theme designed and validated together.
 - **Comfort zone targeting.** Colors aim for 5:1–10:1 contrast — readable without being harsh.
 
