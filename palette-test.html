@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Dalton — Palette Comparison</title>
+<style>
+/* ── Reset & layout ── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "JetBrains Mono", "SF Mono", monospace; font-size: 11px; padding: 20px 24px; transition: background 0.2s, color 0.2s; }
+h1 { font-size: 16px; margin-bottom: 2px; }
+h2 { font-size: 12px; font-weight: normal; margin-top: 0; margin-bottom: 12px; }
+h3 { font-size: 12px; margin: 20px 0 8px 0; }
+
+/* ── Toggle ── */
+.toggle-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.toggle-bar button {
+  font-family: inherit; font-size: 11px; padding: 5px 14px; border: 1px solid; border-radius: 4px;
+  cursor: pointer; transition: all 0.15s;
+}
+.toggle-bar button.active { font-weight: bold; }
+
+/* ── Swatches ── */
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 16px 0; }
+.swatch-card {
+  display: flex; align-items: center; gap: 8px; border: 1px solid; border-radius: 4px; padding: 6px 10px;
+  min-width: 180px;
+}
+.swatch-big { width: 28px; height: 28px; border-radius: 3px; border: 1px solid; flex-shrink: 0; }
+.swatch-info { font-size: 10px; line-height: 1.5; }
+.swatch-hex { font-weight: bold; }
+.swatch-name { opacity: 0.5; }
+.swatch-lum { opacity: 0.4; font-size: 9px; }
+
+/* ── Luminance bars ── */
+.lum-bar { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+.lum-label { width: 100px; text-align: right; font-size: 10px; opacity: 0.6; }
+.lum-fill { height: 10px; border-radius: 2px; transition: width 0.3s; }
+.lum-value { font-size: 9px; opacity: 0.5; }
+.lum-cr { font-size: 9px; opacity: 0.7; margin-left: 4px; }
+
+/* ── ANSI strips ── */
+.strip { display: flex; height: 56px; margin: 4px 0; border-radius: 4px; overflow: hidden; }
+.strip-cell { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 9px; flex-direction: column; gap: 2px; }
+
+/* ── Contrast matrix ── */
+.matrix { border-collapse: collapse; margin: 8px 0; }
+.matrix td, .matrix th { width: 56px; height: 56px; text-align: center; vertical-align: middle; padding: 2px; font-size: 9px; border: 1px solid; }
+.matrix th { text-align: right; padding-right: 6px; width: 100px; white-space: nowrap; font-weight: normal; }
+.matrix th.col-header { text-align: left; writing-mode: vertical-lr; transform: rotate(180deg); height: 100px; width: 56px; padding: 6px 2px; vertical-align: bottom; }
+.matrix .pass { font-weight: bold; }
+.matrix .fail { opacity: 0.3; }
+.legend { margin-top: 12px; opacity: 0.6; font-size: 10px; line-height: 1.6; }
+
+/* ── Terminal preview ── */
+.terminal {
+  border-radius: 8px; padding: 16px 20px; margin: 8px 0; font-size: 12px; line-height: 1.6;
+  border: 1px solid; max-width: 700px;
+}
+.terminal .prompt { font-weight: bold; }
+
+/* ── Side-by-side ── */
+.columns { display: flex; gap: 24px; flex-wrap: wrap; }
+.columns > div { flex: 1; min-width: 340px; }
+</style>
+</head><body>
+
+<h1 id="title">Dalton — Palette Comparison</h1>
+<h2 id="subtitle">Toggle between dark and bright variants · contrast ratios computed live</h2>
+
+<div class="toggle-bar">
+  <button id="btn-dark" onclick="setTheme('dark')">Dalton Dark</button>
+  <button id="btn-bright" onclick="setTheme('bright')">Dalton Bright</button>
+</div>
+
+<h3>Swatches</h3>
+<div id="swatches" class="swatches"></div>
+
+<h3>Luminance spread (foreground colors vs background)</h3>
+<div id="luminance"></div>
+
+<h3>ANSI strips</h3>
+<div id="strips"></div>
+
+<h3>Terminal preview</h3>
+<div id="terminal" class="terminal"></div>
+
+<h3>Contrast matrix (fg text on bg row)</h3>
+<div id="matrix-wrap"></div>
+<div class="legend">
+  <b>Bold</b> = WCAG AA pass (&ge;4.5:1) &middot; Normal = weak (3&ndash;4.5:1) &middot; <em>Dim</em> = fail (&lt;3:1)<br>
+  Rows = background color &middot; Columns = foreground (text) color &middot; Sorted by luminance
+</div>
+
+<script>
+// ── Palettes (inline from palettes.json) ──
+const PALETTES = {
+  dark: {
+    name: "Dalton Dark",
+    background: "#1b1b1b", foreground: "#c8c9cc", cursor: "#9a9a9a", selection: "#333333",
+    black: "#282828", red: "#d85050", green: "#5b914e", yellow: "#c4c40c",
+    blue: "#7aa2f7", magenta: "#a050d0", cyan: "#56717f", white: "#b8b8b8",
+    "br-black": "#3c3c3c", "br-red": "#f07068", "br-green": "#88b97d", "br-yellow": "#eded02",
+    "br-blue": "#97b1f1", "br-magenta": "#c070f0", "br-cyan": "#6691a7", "br-white": "#d8d8d8",
+    names: {
+      background:"background", black:"black", selection:"selection",
+      red:"punch red", green:"dark grass", yellow:"vivid gold",
+      blue:"clear blue", magenta:"vivid violet", cyan:"steel teal",
+      white:"pale silver", "br-black":"ash", "br-red":"hot cherry",
+      "br-green":"soft lime", "br-yellow":"neon gold", "br-blue":"soft periwinkle",
+      "br-magenta":"hot violet", "br-cyan":"slate blue", "br-white":"bright mist",
+      foreground:"foreground"
+    }
+  },
+  bright: {
+    name: "Dalton Bright",
+    background: "#f4f1eb", foreground: "#2e3038", cursor: "#5a5a5a", selection: "#d0cdc5",
+    black: "#353840", red: "#b83030", green: "#3a7530", yellow: "#7a6d00",
+    blue: "#3060c8", magenta: "#7830a8", cyan: "#3a5565", white: "#c8c5be",
+    "br-black": "#70707a", "br-red": "#c83838", "br-green": "#2d8528", "br-yellow": "#8a7d00",
+    "br-blue": "#4070d8", "br-magenta": "#8838c0", "br-cyan": "#2a6880", "br-white": "#e8e5df",
+    names: {
+      background:"background", black:"charcoal", selection:"selection",
+      red:"brick red", green:"forest", yellow:"dark gold",
+      blue:"deep blue", magenta:"deep violet", cyan:"dark teal",
+      white:"warm silver", "br-black":"stone", "br-red":"warm red",
+      "br-green":"vivid green", "br-yellow":"amber", "br-blue":"royal blue",
+      "br-magenta":"vivid violet", "br-cyan":"ocean", "br-white":"soft white",
+      foreground:"foreground"
+    }
+  }
+};
+
+const COLOR_KEYS = [
+  "background", "black", "selection",
+  "red", "green", "yellow", "blue", "magenta", "cyan",
+  "white", "br-black", "br-red", "br-green", "br-yellow",
+  "br-blue", "br-magenta", "br-cyan", "br-white", "foreground"
+];
+
+const FG_KEYS = [
+  "red", "green", "yellow", "blue", "magenta", "cyan", "white",
+  "br-red", "br-green", "br-yellow", "br-blue", "br-magenta", "br-cyan", "br-white",
+  "foreground"
+];
+
+const MATRIX_KEYS = [
+  "background", "black", "selection", "br-black",
+  "cyan", "magenta", "red", "green", "br-cyan", "br-magenta", "br-red",
+  "blue", "br-blue", "br-green", "white", "yellow", "foreground", "br-white", "br-yellow"
+];
+
+// ── Color math ──
+function hexToRgb(h) {
+  h = h.replace("#","");
+  return [parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255];
+}
+
+function srgbToLin(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+
+function luminance(hex) {
+  const [r,g,b] = hexToRgb(hex);
+  return 0.2126 * srgbToLin(r) + 0.7152 * srgbToLin(g) + 0.0722 * srgbToLin(b);
+}
+
+function contrastRatio(hex1, hex2) {
+  let l1 = luminance(hex1), l2 = luminance(hex2);
+  if (l1 < l2) [l1, l2] = [l2, l1];
+  return (l1 + 0.05) / (l2 + 0.05);
+}
+
+function textColorFor(bgHex) {
+  return luminance(bgHex) > 0.4 ? "#000000" : "#ffffff";
+}
+
+// ── Current state ──
+let current = "dark";
+
+function P() { return PALETTES[current]; }
+
+// ── Renderers ──
+function renderSwatches() {
+  const p = P();
+  const el = document.getElementById("swatches");
+  el.innerHTML = COLOR_KEYS.map(k => {
+    const hex = p[k];
+    const lum = luminance(hex).toFixed(3);
+    const cr = contrastRatio(hex, p.background).toFixed(1);
+    const name = p.names[k] || k;
+    const borderColor = current === "dark" ? "#555" : "#bbb";
+    return `<div class="swatch-card" style="background:${p.background};border-color:${borderColor}">
+      <div class="swatch-big" style="background:${hex};border-color:${borderColor}"></div>
+      <div class="swatch-info">
+        <span class="swatch-hex" style="color:${hex}">${hex}</span>
+        <span class="swatch-name" style="color:${p.foreground}">${k}</span><br>
+        <span class="swatch-lum" style="color:${p.foreground}">L=${lum} · bg ${cr}:1</span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function renderLuminance() {
+  const p = P();
+  const bgLum = luminance(p.background);
+  const items = FG_KEYS.map(k => ({
+    key: k, hex: p[k], lum: luminance(p[k]),
+    cr: contrastRatio(p[k], p.background)
+  })).sort((a, b) => a.lum - b.lum);
+
+  const el = document.getElementById("luminance");
+  el.innerHTML = items.map(d => {
+    const barW = Math.max(2, d.lum * 500);
+    const crClass = d.cr >= 4.5 ? "pass" : d.cr >= 3.0 ? "weak" : "fail";
+    const crLabel = d.cr >= 4.5 ? "AA" : d.cr >= 3.0 ? "~" : "X";
+    return `<div class="lum-bar">
+      <div class="lum-label" style="color:${p.foreground}">${d.key}</div>
+      <div class="lum-fill" style="width:${barW}px;background:${d.hex}"></div>
+      <span class="lum-value" style="color:${p.foreground}">L=${d.lum.toFixed(3)}</span>
+      <span class="lum-cr" style="color:${d.hex};font-weight:${crClass==='pass'?'bold':'normal'}">${d.cr.toFixed(1)}:1 ${crLabel}</span>
+    </div>`;
+  }).join("");
+}
+
+function renderStrips() {
+  const p = P();
+  const normal = ["black","red","green","yellow","blue","magenta","cyan","white"];
+  const bright = ["br-black","br-red","br-green","br-yellow","br-blue","br-magenta","br-cyan","br-white"];
+
+  function strip(keys, label) {
+    const cells = keys.map(k => {
+      const hex = p[k];
+      const tc = textColorFor(hex);
+      const name = k.replace("br-","");
+      return `<div class="strip-cell" style="background:${hex};color:${tc}"><span>${name}</span><span>${hex}</span></div>`;
+    }).join("");
+    return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0">
+      <span style="width:60px;text-align:right;font-size:10px;color:${p.foreground};opacity:0.6">${label}</span>
+      <div class="strip" style="flex:1">${cells}</div>
+    </div>`;
+  }
+
+  document.getElementById("strips").innerHTML = strip(normal, "Normal") + strip(bright, "Bright");
+}
+
+function renderTerminal() {
+  const p = P();
+  const borderColor = current === "dark" ? "#444" : "#ccc";
+  const el = document.getElementById("terminal");
+  el.style.background = p.background;
+  el.style.borderColor = borderColor;
+
+  el.innerHTML = `
+    <div><span class="prompt" style="color:${p.blue}">user@dalton</span><span style="color:${p.foreground}">:</span><span style="color:${p.cyan}">~/project</span><span style="color:${p.foreground}">$ </span><span style="color:${p.foreground}">git status</span></div>
+    <div style="color:${p.green}">On branch main</div>
+    <div style="color:${p.foreground}">Changes not staged for commit:</div>
+    <div>&nbsp; <span style="color:${p.red}">modified:   src/index.ts</span></div>
+    <div>&nbsp; <span style="color:${p.red}">deleted:    old-config.yml</span></div>
+    <div style="color:${p.foreground}">Untracked files:</div>
+    <div>&nbsp; <span style="color:${p.green}">palette-test.html</span></div>
+    <div style="color:${p["br-black"]}">/* this is a comment */</span></div>
+    <div><span style="color:${p.yellow}">warning:</span><span style="color:${p.foreground}"> 2 files changed, 1 untracked</span></div>
+    <div><span style="color:${p.magenta}">hint:</span><span style="color:${p.foreground}"> use "git add" to track new files</span></div>
+    <div style="color:${p["br-blue"]}">→ Build succeeded</div>
+    <div><span style="color:${p["br-cyan"]}">INFO</span> <span style="color:${p.foreground}">Server running on</span> <span style="color:${p["br-yellow"]}">http://localhost:3000</span></div>
+    <div><span style="color:${p["br-magenta"]}">DEBUG</span> <span style="color:${p["br-red"]}">Connection refused: ECONNRESET</span></div>
+  `;
+}
+
+function renderMatrix() {
+  const p = P();
+  // Sort by luminance
+  const sorted = [...MATRIX_KEYS].sort((a, b) => luminance(p[a]) - luminance(p[b]));
+  const borderColor = current === "dark" ? "#222" : "#ddd";
+
+  let html = '<table class="matrix"><tr><td></td>';
+  sorted.forEach(k => {
+    html += `<th class="col-header" style="color:${p[k]};border-color:${borderColor}">${k}</th>`;
+  });
+  html += "</tr>";
+
+  sorted.forEach(bgK => {
+    html += `<tr><th style="color:${p[bgK]};border-color:${borderColor}">${bgK}</th>`;
+    sorted.forEach(fgK => {
+      const cr = contrastRatio(p[bgK], p[fgK]);
+      let cls, alpha;
+      if (cr >= 4.5) { cls = "pass"; alpha = 1; }
+      else if (cr >= 3.0) { cls = ""; alpha = 0.75; }
+      else { cls = "fail"; alpha = 1; }
+      html += `<td class="${cls}" style="background:${p[bgK]};color:${p[fgK]};border-color:${borderColor};opacity:${alpha}">${cr.toFixed(1)}</td>`;
+    });
+    html += "</tr>";
+  });
+  html += "</table>";
+
+  document.getElementById("matrix-wrap").innerHTML = html;
+}
+
+// ── Theme switch ──
+function setTheme(theme) {
+  current = theme;
+  const p = P();
+  const isDark = theme === "dark";
+
+  document.body.style.background = isDark ? "#111" : "#e8e5df";
+  document.body.style.color = p.foreground;
+  document.getElementById("title").style.color = p.foreground;
+  document.getElementById("subtitle").style.color = isDark ? "#999" : "#888";
+
+  // Buttons
+  ["dark", "bright"].forEach(t => {
+    const btn = document.getElementById("btn-" + t);
+    const active = t === theme;
+    btn.className = active ? "active" : "";
+    btn.style.background = active ? p.foreground : "transparent";
+    btn.style.color = active ? p.background : p.foreground;
+    btn.style.borderColor = isDark ? "#555" : "#aaa";
+  });
+
+  // H3 color
+  document.querySelectorAll("h3").forEach(h => h.style.color = p.foreground);
+  document.querySelector(".legend").style.color = isDark ? "#999" : "#666";
+
+  renderSwatches();
+  renderLuminance();
+  renderStrips();
+  renderTerminal();
+  renderMatrix();
+}
+
+// ── Init ──
+setTheme("dark");
+</script>
+</body></html>

@@ -1,0 +1,23 @@
+/* Dalton Bright — color palette (light background variant) */
+
+:root {
+  --background: #f4f1eb;
+  --black: #353840;
+  --selection: #d0cdc5;
+  --red: #b83030;
+  --green: #3a7530;
+  --yellow: #7a6d00;
+  --blue: #3060c8;
+  --magenta: #7830a8;
+  --cyan: #3a5565;
+  --white: #c8c5be;
+  --br-black: #70707a;
+  --br-red: #c83838;
+  --br-green: #2d8528;
+  --br-yellow: #8a7d00;
+  --br-blue: #4070d8;
+  --br-magenta: #8838c0;
+  --br-cyan: #2a6880;
+  --br-white: #e8e5df;
+  --foreground: #2e3038;
+}
